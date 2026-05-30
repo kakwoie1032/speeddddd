@@ -540,11 +540,14 @@ export default function App() {
     const generatedCode = SpeedBingoNetwork.generateRoomId();
 
     try {
+      setupNetworkCallbacks(network);
+
       network.onConnectionOpen = (id) => {
         setMyId(id);
         setRoomId(generatedCode);
         setIsHost(true);
         setIsLoading(false);
+        setErrorMsg(null);
 
         // Host setup master model
         const startingPlayers: Player[] = [
@@ -576,7 +579,6 @@ export default function App() {
         setGameState(updateState);
       };
 
-      setupNetworkCallbacks(network);
       await network.initHost(generatedCode);
     } catch (e: any) {
       setErrorMsg(e.message || '방 생성에 오류 발생.');
