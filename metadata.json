@@ -1,0 +1,6 @@
+{
+  "name": "스피드 빙고 게임",
+  "description": "반응 속도 기반의 실시간 멀티플레이 빙고 게임",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
