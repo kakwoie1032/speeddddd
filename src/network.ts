@@ -46,9 +46,23 @@ export class SpeedBingoNetwork {
       this.connections.clear();
       this.hostConnection = null;
 
-      // Create Peer with specified Room ID
+      // Create Peer with specified Room ID & STUN Servers config
       this.peer = new Peer(roomId, {
         debug: 1, // Only errors/warnings to avoid cluttering console
+        host: '0.peerjs.com',
+        port: 443,
+        secure: true,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.services.mozilla.com' },
+          ],
+          iceTransportPolicy: 'all',
+        },
       });
 
       this.peer.on('open', (id) => {
@@ -94,12 +108,35 @@ export class SpeedBingoNetwork {
       this.roomId = roomId;
       this.connections.clear();
 
-      // Create Peer with random ID
+      // Create Peer with random ID & STUN Configuration
       this.peer = new Peer({
         debug: 1,
+        host: '0.peerjs.com',
+        port: 443,
+        secure: true,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.services.mozilla.com' },
+          ],
+          iceTransportPolicy: 'all',
+        },
       });
 
       let hasResolved = false;
+
+      // 15 seconds connection timeout fallback for P2P NAT issues
+      const connectionTimeout = setTimeout(() => {
+        if (!hasResolved) {
+          hasResolved = true;
+          this.destroy();
+          reject(new Error('연결 시간 초과: 방이 존재하지 않거나 네트워크 방화벽 또는 다른 망 환경때문에 연결할 수 없습니다.'));
+        }
+      }, 15000);
 
       this.peer.on('open', (myId) => {
         this.peerId = myId;
@@ -109,7 +146,24 @@ export class SpeedBingoNetwork {
           reliable: true,
         });
 
-        this.handleHostConnection(conn, playerName, resolve, reject);
+        this.handleHostConnection(
+          conn, 
+          playerName, 
+          (id) => {
+            if (!hasResolved) {
+              hasResolved = true;
+              clearTimeout(connectionTimeout);
+              resolve(id);
+            }
+          }, 
+          (err) => {
+            if (!hasResolved) {
+              hasResolved = true;
+              clearTimeout(connectionTimeout);
+              reject(err);
+            }
+          }
+        );
       });
 
       this.peer.on('error', (err) => {
@@ -120,6 +174,8 @@ export class SpeedBingoNetwork {
         }
         this.onError(errorMsg);
         if (!hasResolved) {
+          hasResolved = true;
+          clearTimeout(connectionTimeout);
           reject(new Error(errorMsg));
         }
       });
